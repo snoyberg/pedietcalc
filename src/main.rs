@@ -530,9 +530,8 @@ where
             <span>{label}</span>
             <input
                 class="number-input"
-                type="number"
-                min="0"
-                step="0.1"
+                type="text"
+                inputmode="decimal"
                 prop:value=value
                 on:input=move |ev| {
                     let new_value = leptos::event_target_value(&ev);
