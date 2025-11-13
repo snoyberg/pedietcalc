@@ -235,14 +235,20 @@ pub fn App() -> impl IntoView {
                                         )}
                                     </div>
 
-                                <div class="card__summary">
-                                    <p>{move || format!("Protein: {} g", format_number(per_recipe_protein()))}</p>
-                                    <p>{move || format!("Fat: {} g", format_number(per_recipe_fat()))}</p>
-                                    <p>{move || format!("Net carbs: {} g", format_number(per_recipe_carbs()))}</p>
-                                </div>
-                            </article>
+                                    <div class="card__summary">
+                                        <p>{move || format!("Protein: {} g", format_number(per_recipe_protein()))}</p>
+                                        <p>{move || format!("Fat: {} g", format_number(per_recipe_fat()))}</p>
+                                        <p>{move || format!("Net carbs: {} g", format_number(per_recipe_carbs()))}</p>
+                                        <p>{move || {
+                                            let protein = per_recipe_protein();
+                                            let fat = per_recipe_fat();
+                                            let carbs = per_recipe_carbs();
+                                            format!("P:E ratio: {}", format_ratio((protein, fat, carbs)))
+                                        }}</p>
+                                    </div>
+                                </article>
+                            }
                         }
-                    }
                 />
             </section>
 
