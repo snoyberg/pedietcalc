@@ -4,10 +4,10 @@ use leptos::*;
 struct Ingredient {
     id: usize,
     name: String,
-    protein: f64,
-    fat: f64,
-    net_carbs: f64,
-    servings: f64,
+    protein: String,
+    fat: String,
+    net_carbs: String,
+    servings: String,
 }
 
 impl Ingredient {
@@ -15,10 +15,10 @@ impl Ingredient {
         Self {
             id,
             name: String::new(),
-            protein: 0.0,
-            fat: 0.0,
-            net_carbs: 0.0,
-            servings: 1.0,
+            protein: String::new(),
+            fat: String::new(),
+            net_carbs: String::new(),
+            servings: "1".to_string(),
         }
     }
 }
@@ -53,16 +53,16 @@ pub fn App() -> impl IntoView {
 
     let totals = create_memo(move |_| {
         ingredients.with(|items| {
-            let mut protein = 0.0;
-            let mut fat = 0.0;
-            let mut carbs = 0.0;
+            let mut total_protein = 0.0;
+            let mut total_fat = 0.0;
+            let mut total_carbs = 0.0;
             for item in items {
-                let servings = sanitize_quantity(item.servings);
-                protein += sanitize_quantity(item.protein) * servings;
-                fat += sanitize_quantity(item.fat) * servings;
-                carbs += sanitize_quantity(item.net_carbs) * servings;
+                let servings = parse_quantity(&item.servings);
+                total_protein += parse_quantity(&item.protein) * servings;
+                total_fat += parse_quantity(&item.fat) * servings;
+                total_carbs += parse_quantity(&item.net_carbs) * servings;
             }
-            (protein, fat, carbs)
+            (total_protein, total_fat, total_carbs)
         })
     });
 
@@ -93,42 +93,42 @@ pub fn App() -> impl IntoView {
                     key=|ingredient: &Ingredient| ingredient.id
                     children=move |ingredient: Ingredient| {
                         let id = ingredient.id;
-                        let per_recipe_protein = {
-                            let ingredients = ingredients;
-                            move || {
-                                ingredients.with(|items| {
-                                    items
-                                        .iter()
-                                        .find(|item| item.id == id)
-                                        .map(|item| sanitize_quantity(item.protein) * sanitize_quantity(item.servings))
-                                        .unwrap_or_default()
-                                })
-                            }
-                        };
-                        let per_recipe_fat = {
-                            let ingredients = ingredients;
-                            move || {
-                                ingredients.with(|items| {
-                                    items
-                                        .iter()
-                                        .find(|item| item.id == id)
-                                        .map(|item| sanitize_quantity(item.fat) * sanitize_quantity(item.servings))
-                                        .unwrap_or_default()
-                                })
-                            }
-                        };
-                        let per_recipe_carbs = {
-                            let ingredients = ingredients;
-                            move || {
-                                ingredients.with(|items| {
-                                    items
-                                        .iter()
-                                        .find(|item| item.id == id)
-                                        .map(|item| sanitize_quantity(item.net_carbs) * sanitize_quantity(item.servings))
-                                        .unwrap_or_default()
-                                })
-                            }
-                        };
+                            let per_recipe_protein = {
+                                let ingredients = ingredients;
+                                move || {
+                                    ingredients.with(|items| {
+                                        items
+                                            .iter()
+                                            .find(|item| item.id == id)
+                                            .map(|item| parse_quantity(&item.protein) * parse_quantity(&item.servings))
+                                            .unwrap_or_default()
+                                    })
+                                }
+                            };
+                            let per_recipe_fat = {
+                                let ingredients = ingredients;
+                                move || {
+                                    ingredients.with(|items| {
+                                        items
+                                            .iter()
+                                            .find(|item| item.id == id)
+                                            .map(|item| parse_quantity(&item.fat) * parse_quantity(&item.servings))
+                                            .unwrap_or_default()
+                                    })
+                                }
+                            };
+                            let per_recipe_carbs = {
+                                let ingredients = ingredients;
+                                move || {
+                                    ingredients.with(|items| {
+                                        items
+                                            .iter()
+                                            .find(|item| item.id == id)
+                                            .map(|item| parse_quantity(&item.net_carbs) * parse_quantity(&item.servings))
+                                            .unwrap_or_default()
+                                    })
+                                }
+                            };
 
                         view! {
                             <article class="ingredient-card">
@@ -163,69 +163,77 @@ pub fn App() -> impl IntoView {
                                 <div class="card__grid">
                                     {macro_input(
                                         "Protein (g per serving)",
-                                        {
-                                            let ingredients = ingredients;
-                                            move || {
-                                                ingredients.with(|items| {
-                                                    items
-                                                        .iter()
-                                                        .find(|item| item.id == id)
-                                                        .map(|item| sanitize_quantity(item.protein))
-                                                        .unwrap_or_default()
-                                                })
-                                            }
-                                        },
-                                        move |value| update_ingredient(set_ingredients, id, |item| item.protein = value),
-                                    )}
-                                    {macro_input(
-                                        "Fat (g per serving)",
-                                        {
-                                            let ingredients = ingredients;
-                                            move || {
-                                                ingredients.with(|items| {
-                                                    items
-                                                        .iter()
-                                                        .find(|item| item.id == id)
-                                                        .map(|item| sanitize_quantity(item.fat))
-                                                        .unwrap_or_default()
-                                                })
-                                            }
-                                        },
-                                        move |value| update_ingredient(set_ingredients, id, |item| item.fat = value),
-                                    )}
-                                    {macro_input(
-                                        "Net carbs (g per serving)",
-                                        {
-                                            let ingredients = ingredients;
-                                            move || {
-                                                ingredients.with(|items| {
-                                                    items
-                                                        .iter()
-                                                        .find(|item| item.id == id)
-                                                        .map(|item| sanitize_quantity(item.net_carbs))
-                                                        .unwrap_or_default()
-                                                })
-                                            }
-                                        },
-                                        move |value| update_ingredient(set_ingredients, id, |item| item.net_carbs = value),
-                                    )}
-                                    {macro_input(
-                                        "Servings used in recipe",
-                                        {
-                                            let ingredients = ingredients;
-                                            move || {
-                                                ingredients.with(|items| {
-                                                    items
-                                                        .iter()
-                                                        .find(|item| item.id == id)
-                                                        .map(|item| sanitize_quantity(item.servings))
-                                                        .unwrap_or(1.0)
-                                                })
-                                            }
-                                        },
-                                        move |value| update_ingredient(set_ingredients, id, |item| item.servings = value.max(0.0)),
-                                    )}
-                                </div>
+                                            {
+                                                let ingredients = ingredients;
+                                                move || {
+                                                    ingredients.with(|items| {
+                                                        items
+                                                            .iter()
+                                                            .find(|item| item.id == id)
+                                                            .map(|item| item.protein.clone())
+                                                            .unwrap_or_default()
+                                                    })
+                                                }
+                                            },
+                                            move |value| {
+                                                update_ingredient(set_ingredients, id, |item| item.protein = value);
+                                            },
+                                        )}
+                                        {macro_input(
+                                            "Fat (g per serving)",
+                                            {
+                                                let ingredients = ingredients;
+                                                move || {
+                                                    ingredients.with(|items| {
+                                                        items
+                                                            .iter()
+                                                            .find(|item| item.id == id)
+                                                            .map(|item| item.fat.clone())
+                                                            .unwrap_or_default()
+                                                    })
+                                                }
+                                            },
+                                            move |value| {
+                                                update_ingredient(set_ingredients, id, |item| item.fat = value);
+                                            },
+                                        )}
+                                        {macro_input(
+                                            "Net carbs (g per serving)",
+                                            {
+                                                let ingredients = ingredients;
+                                                move || {
+                                                    ingredients.with(|items| {
+                                                        items
+                                                            .iter()
+                                                            .find(|item| item.id == id)
+                                                            .map(|item| item.net_carbs.clone())
+                                                            .unwrap_or_default()
+                                                    })
+                                                }
+                                            },
+                                            move |value| {
+                                                update_ingredient(set_ingredients, id, |item| item.net_carbs = value);
+                                            },
+                                        )}
+                                        {macro_input(
+                                            "Servings used in recipe",
+                                            {
+                                                let ingredients = ingredients;
+                                                move || {
+                                                    ingredients.with(|items| {
+                                                        items
+                                                            .iter()
+                                                            .find(|item| item.id == id)
+                                                            .map(|item| item.servings.clone())
+                                                            .unwrap_or_else(|| "1".to_string())
+                                                    })
+                                                }
+                                            },
+                                            move |value| {
+                                                update_ingredient(set_ingredients, id, |item| item.servings = value);
+                                            },
+                                        )}
+                                    </div>
 
                                 <div class="card__summary">
                                     <p>{move || format!("Protein: {} g", format_number(per_recipe_protein()))}</p>
@@ -280,8 +288,8 @@ pub fn App() -> impl IntoView {
 
 fn macro_input<V, F>(label: &'static str, value: V, on_change: F) -> impl IntoView
 where
-    V: Fn() -> f64 + 'static,
-    F: Fn(f64) + 'static,
+    V: Fn() -> String + 'static,
+    F: Fn(String) + 'static,
 {
     view! {
         <label class="card__field">
@@ -291,10 +299,10 @@ where
                 type="number"
                 min="0"
                 step="0.1"
-                prop:value=move || format_number(value())
+                prop:value=move || value()
                 on:input=move |ev| {
-                    let parsed = parse_number(leptos::event_target_value(&ev));
-                    on_change(parsed);
+                    let new_value = leptos::event_target_value(&ev);
+                    on_change(new_value);
                 }
             />
         </label>
@@ -312,8 +320,8 @@ where
     });
 }
 
-fn parse_number(input: String) -> f64 {
-    input.trim().parse::<f64>().unwrap_or(0.0)
+fn parse_quantity(raw: &str) -> f64 {
+    sanitize_quantity(raw.trim().parse::<f64>().unwrap_or(0.0))
 }
 
 fn sanitize_quantity(value: f64) -> f64 {
