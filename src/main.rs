@@ -142,12 +142,27 @@ pub fn App() -> impl IntoView {
         <style>{stylesheet}</style>
         <main class="app">
             <section class="app__header screen-only">
-                <h1>P:E Recipe Calculator</h1>
+                <h1>"P:E Diet Recipe Calculator"</h1>
+                <p>
+                    "The "
+                    <a href="https://thepediet.com/" target="_blank">"P:E Diet"</a>
+                    " focuses on maximizing protein and reducing energy (fat and net carbs). "
+                    "This site provides a convenient way to calculate these ratios."
+                </p>
                 <p>
                     "Build a recipe from food labels, enter their per-serving macros, "
                     "and specify how many servings of each item you plan to use. "
                     "The calculator totals protein, fat, and net carbs, and "
                     "shows the overall protein efficiency ratio (protein ÷ fat+net carbs)."
+                </p>
+                <p>
+                    "Provided by "
+                    <a href="https://www.snoyman.com/" target="_blank">Michael Snoyman</a>
+                    ". This project is open source, code is available at "
+                    <a href="https://github.com/snoyberg/pedietcalc" target="_blank">
+                        <code>"github:snoyberg/pedietcalc"</code>
+                    </a>
+                    "."
                 </p>
                 </section>
 
