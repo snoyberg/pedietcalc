@@ -2,7 +2,7 @@
 
 This is a web application for calculating P:E diet ratios. The P:E diet is based on analyzing the relationship between protein and energy in a food item. All values are given in grams, and energy is calculated as the sum of total fat and net carbs. Net carbs are carbs ignoring fiber.
 
-Live version available at: <http://pedietcalc.snoyman.com/>
+Live version available at: <https://pedietcalc.snoyman.com/>
 
 ## Technical details
 
