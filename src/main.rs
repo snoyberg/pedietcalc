@@ -1,4 +1,6 @@
 use leptos::*;
+#[cfg(target_arch = "wasm32")]
+use web_sys::window;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Ingredient {
@@ -51,6 +53,15 @@ pub fn App() -> impl IntoView {
         }
     };
 
+    let print_recipe = |_| {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(win) = window() {
+                let _ = win.print();
+            }
+        }
+    };
+
     let totals = create_memo(move |_| {
         ingredients.with(|items| {
             let mut total_protein = 0.0;
@@ -79,13 +90,18 @@ pub fn App() -> impl IntoView {
                     "The calculator totals protein, fat, and net carbs, and "
                     "shows the overall protein efficiency ratio (protein ÷ fat+net carbs)."
                 </p>
-            </section>
+                </section>
 
-            <section class="app__actions">
-                <button class="primary" on:click=add_ingredient>
-                    "+ Add food"
-                </button>
-            </section>
+                <section class="app__actions">
+                    <div class="button-row">
+                        <button class="primary" on:click=add_ingredient>
+                            "+ Add food"
+                        </button>
+                        <button class="secondary" on:click=print_recipe>
+                            "Print recipe"
+                        </button>
+                    </div>
+                </section>
 
             <section class="app__ingredients">
                 <For

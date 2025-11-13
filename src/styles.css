@@ -39,6 +39,12 @@ body {
     justify-content: flex-end;
 }
 
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
 button {
     font: inherit;
     border-radius: 0.5rem;
@@ -55,6 +61,12 @@ button.primary {
 
 button.primary:hover {
     background: #0349b1;
+}
+
+button.secondary {
+    background: white;
+    color: #0560e8;
+    border: 1px solid #c7dbff;
 }
 
 button.ghost {
@@ -171,5 +183,37 @@ button:disabled {
 
     .card__grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    :root {
+        background: #ffffff;
+    }
+
+    body {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .app {
+        max-width: none;
+        padding: 0;
+    }
+
+    .app__actions,
+    button {
+        display: none !important;
+    }
+
+    .ingredient-card,
+    .app__summary ul {
+        box-shadow: none;
+        border: 1px solid #d0d5dd;
+        page-break-inside: avoid;
+    }
+
+    .app__summary li.highlight {
+        background: #ffffff;
     }
 }
