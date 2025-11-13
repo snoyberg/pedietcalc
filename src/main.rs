@@ -1,5 +1,4 @@
 use leptos::*;
-#[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -25,13 +24,21 @@ impl Ingredient {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+struct RowSnapshot {
+    name: String,
+    per_protein: f64,
+    per_fat: f64,
+    per_carbs: f64,
+    servings: f64,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     let (ingredients, set_ingredients) = create_signal(vec![Ingredient::empty(0)]);
     let next_id = create_rw_signal(1usize);
 
     let add_ingredient = {
-        let set_ingredients = set_ingredients;
         move |_| {
             let id = next_id.get_untracked();
             next_id.update(|value| *value += 1);
@@ -40,7 +47,6 @@ pub fn App() -> impl IntoView {
     };
 
     let remove_ingredient = {
-        let set_ingredients = set_ingredients;
         move |id: usize| {
             set_ingredients.update(|items| {
                 items.retain(|item| item.id != id);
@@ -54,11 +60,8 @@ pub fn App() -> impl IntoView {
     };
 
     let print_recipe = |_| {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(win) = window() {
-                let _ = win.print();
-            }
+        if let Some(win) = window() {
+            let _ = win.print();
         }
     };
 
@@ -82,7 +85,7 @@ pub fn App() -> impl IntoView {
     view! {
         <style>{stylesheet}</style>
         <main class="app">
-            <section class="app__header">
+            <section class="app__header screen-only">
                 <h1>P:E Recipe Calculator</h1>
                 <p>
                     "Build a recipe from food labels, enter their per-serving macros, "
@@ -92,7 +95,7 @@ pub fn App() -> impl IntoView {
                 </p>
                 </section>
 
-                <section class="app__actions">
+                <section class="app__actions screen-only">
                     <div class="button-row">
                         <button class="primary" on:click=add_ingredient>
                             "+ Add food"
@@ -103,7 +106,7 @@ pub fn App() -> impl IntoView {
                     </div>
                 </section>
 
-            <section class="app__ingredients">
+            <section class="app__ingredients screen-only">
                 <For
                     each=move || ingredients.get()
                     key=|ingredient: &Ingredient| ingredient.id
@@ -180,7 +183,6 @@ pub fn App() -> impl IntoView {
                                     {macro_input(
                                         "Protein (g per serving)",
                                             {
-                                                let ingredients = ingredients;
                                                 move || {
                                                     ingredients.with(|items| {
                                                         items
@@ -268,7 +270,7 @@ pub fn App() -> impl IntoView {
                 />
             </section>
 
-            <section class="app__summary">
+            <section class="app__summary screen-only">
                 <h2>Totals</h2>
                 <ul>
                     <li>
@@ -304,6 +306,119 @@ pub fn App() -> impl IntoView {
                     </li>
                 </ul>
             </section>
+
+            <section class="print-report print-only">
+                <h1>Recipe breakdown</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ingredient</th>
+                            <th>Per serving (g)</th>
+                            <th>Servings used</th>
+                            <th>In recipe (g)</th>
+                            <th>P:E ratio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <For
+                            each=move || ingredients.get()
+                            key=|ingredient: &Ingredient| ingredient.id
+                            children=move |ingredient: Ingredient| {
+                                let id = ingredient.id;
+                                let row_data = create_memo({
+                                    let ingredients = ingredients;
+                                    move |_| {
+                                        ingredients.with(|items| {
+                                            items
+                                                .iter()
+                                                .find(|item| item.id == id)
+                                                .map(|item| RowSnapshot {
+                                                    name: if item.name.trim().is_empty() {
+                                                        "Unnamed ingredient".to_string()
+                                                    } else {
+                                                        item.name.clone()
+                                                    },
+                                                    per_protein: parse_quantity(&item.protein),
+                                                    per_fat: parse_quantity(&item.fat),
+                                                    per_carbs: parse_quantity(&item.net_carbs),
+                                                    servings: parse_quantity(&item.servings),
+                                                })
+                                                .unwrap_or_default()
+                                        })
+                                    }
+                                });
+
+                                view! {
+                                    <tr>
+                                        <td>{move || row_data.get().name.clone()}</td>
+                                        <td>{move || {
+                                            let row = row_data.get();
+                                            format!(
+                                                "P {} / F {} / C {}",
+                                                format_number(row.per_protein),
+                                                format_number(row.per_fat),
+                                                format_number(row.per_carbs)
+                                            )
+                                        }}</td>
+                                        <td>{move || format_number(row_data.get().servings)}</td>
+                                        <td>{move || {
+                                            let row = row_data.get();
+                                            format!(
+                                                "P {} / F {} / C {}",
+                                                format_number(row.per_protein * row.servings),
+                                                format_number(row.per_fat * row.servings),
+                                                format_number(row.per_carbs * row.servings)
+                                            )
+                                        }}</td>
+                                        <td>{move || {
+                                            let row = row_data.get();
+                                            format_ratio((
+                                                row.per_protein * row.servings,
+                                                row.per_fat * row.servings,
+                                                row.per_carbs * row.servings,
+                                            ))
+                                        }}</td>
+                                    </tr>
+                                }
+                            }
+                        />
+                    </tbody>
+                </table>
+
+                <div class="print-report__totals">
+                    <div>
+                        <span>Total protein</span>
+                        <strong>{
+                            move || {
+                                let (protein, _, _) = totals.get();
+                                format!("{} g", format_number(protein))
+                            }
+                        }</strong>
+                    </div>
+                    <div>
+                        <span>Total fat</span>
+                        <strong>{
+                            move || {
+                                let (_, fat, _) = totals.get();
+                                format!("{} g", format_number(fat))
+                            }
+                        }</strong>
+                    </div>
+                    <div>
+                        <span>Total net carbs</span>
+                        <strong>{
+                            move || {
+                                let (_, _, carbs) = totals.get();
+                                format!("{} g", format_number(carbs))
+                            }
+                        }</strong>
+                    </div>
+                    <div>
+                        <span>P:E ratio</span>
+                        <strong>{move || format_ratio(totals.get())}</strong>
+                    </div>
+                </div>
+            </section>
         </main>
     }
 }
@@ -321,7 +436,7 @@ where
                 type="number"
                 min="0"
                 step="0.1"
-                prop:value=move || value()
+                prop:value=value
                 on:input=move |ev| {
                     let new_value = leptos::event_target_value(&ev);
                     on_change(new_value);

@@ -15,6 +15,14 @@ body {
     background: #f5f5f7;
 }
 
+.screen-only {
+    display: block;
+}
+
+.print-only {
+    display: none;
+}
+
 .app {
     max-width: 960px;
     margin: 0 auto;
@@ -176,6 +184,55 @@ button:disabled {
     background: #f0f4ff;
 }
 
+.print-report {
+    margin-top: 2rem;
+}
+
+.print-report table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
+
+.print-report th,
+.print-report td {
+    border: 1px solid #d0d5dd;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+}
+
+.print-report th {
+    background: #eef2ff;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.print-report__totals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.print-report__totals div {
+    border: 1px solid #d0d5dd;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.print-report__totals span {
+    display: block;
+    font-size: 0.85rem;
+    color: #475467;
+    margin-bottom: 0.25rem;
+}
+
+.print-report__totals strong {
+    font-size: 1rem;
+}
+
 @media (max-width: 640px) {
     .app {
         padding: 1.5rem 1rem 2rem;
@@ -201,11 +258,6 @@ button:disabled {
         padding: 0;
     }
 
-    .app__actions,
-    button {
-        display: none !important;
-    }
-
     .ingredient-card,
     .app__summary ul {
         box-shadow: none;
@@ -215,5 +267,13 @@ button:disabled {
 
     .app__summary li.highlight {
         background: #ffffff;
+    }
+
+    .screen-only {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
     }
 }
