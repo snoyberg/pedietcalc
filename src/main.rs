@@ -1,4 +1,8 @@
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use leptos::*;
+use serde::{Deserialize, Serialize};
+use wasm_bindgen::JsValue;
 use web_sys::window;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,10 +37,33 @@ struct RowSnapshot {
     servings: f64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct RecipePayload {
+    ingredients: Vec<IngredientPayload>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct IngredientPayload {
+    id: usize,
+    name: String,
+    protein: f64,
+    fat: f64,
+    net_carbs: f64,
+    servings: f64,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
-    let (ingredients, set_ingredients) = create_signal(vec![Ingredient::empty(0)]);
-    let next_id = create_rw_signal(1usize);
+    let initial_ingredients = load_recipe_from_url().unwrap_or_else(|| vec![Ingredient::empty(0)]);
+    let initial_next_id = initial_ingredients
+        .iter()
+        .map(|ingredient| ingredient.id)
+        .max()
+        .map(|max_id| max_id + 1)
+        .unwrap_or(1);
+
+    let (ingredients, set_ingredients) = create_signal(initial_ingredients);
+    let next_id = create_rw_signal(initial_next_id);
 
     let add_ingredient = {
         move |_| {
@@ -64,6 +91,35 @@ pub fn App() -> impl IntoView {
             let _ = win.print();
         }
     };
+
+    create_effect({
+        let ingredients = ingredients;
+        move |_| {
+            let current = ingredients.get();
+            if let Some(encoded) = encode_recipe(&current) {
+                let target_hash = format!("#recipe={encoded}");
+                if let Some(win) = window() {
+                    let location = win.location();
+                    if location.hash().unwrap_or_default() != target_hash {
+                        if let Ok(history) = win.history() {
+                            let _ = history.replace_state_with_url(
+                                &JsValue::NULL,
+                                "",
+                                Some(&format!(
+                                    "{}{}{}",
+                                    location.pathname().unwrap_or_default(),
+                                    location.search().unwrap_or_default(),
+                                    target_hash
+                                )),
+                            );
+                        } else {
+                            let _ = location.set_hash(&target_hash);
+                        }
+                    }
+                }
+            }
+        }
+    });
 
     let totals = create_memo(move |_| {
         ingredients.with(|items| {
@@ -483,6 +539,72 @@ fn format_ratio(totals: (f64, f64, f64)) -> String {
         "—".to_string()
     } else {
         format!("{:.2}", totals.0 / energy)
+    }
+}
+
+fn encode_recipe(ingredients: &[Ingredient]) -> Option<String> {
+    let payload = RecipePayload {
+        ingredients: ingredients
+            .iter()
+            .map(|ingredient| IngredientPayload {
+                id: ingredient.id,
+                name: ingredient.name.clone(),
+                protein: parse_quantity(&ingredient.protein),
+                fat: parse_quantity(&ingredient.fat),
+                net_carbs: parse_quantity(&ingredient.net_carbs),
+                servings: parse_quantity(&ingredient.servings),
+            })
+            .collect(),
+    };
+
+    serde_json::to_vec(&payload)
+        .ok()
+        .map(|bytes| URL_SAFE_NO_PAD.encode(bytes))
+}
+
+fn decode_recipe(encoded: &str) -> Option<Vec<Ingredient>> {
+    let raw = URL_SAFE_NO_PAD.decode(encoded.as_bytes()).ok()?;
+    let payload: RecipePayload = serde_json::from_slice(&raw).ok()?;
+    Some(
+        payload
+            .ingredients
+            .into_iter()
+            .map(Ingredient::from)
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn load_recipe_from_url() -> Option<Vec<Ingredient>> {
+    let window = window()?;
+    let location = window.location();
+    let hash = location.hash().ok()?;
+    let trimmed = hash.strip_prefix('#').unwrap_or(&hash);
+    let encoded = trimmed.strip_prefix("recipe=")?;
+    let mut ingredients = decode_recipe(encoded)?;
+    if ingredients.is_empty() {
+        ingredients.push(Ingredient::empty(0));
+    }
+    Some(ingredients)
+}
+
+impl From<IngredientPayload> for Ingredient {
+    fn from(payload: IngredientPayload) -> Self {
+        Self {
+            id: payload.id,
+            name: payload.name,
+            protein: format_input_value(payload.protein),
+            fat: format_input_value(payload.fat),
+            net_carbs: format_input_value(payload.net_carbs),
+            servings: format_input_value(payload.servings),
+        }
+    }
+}
+
+fn format_input_value(value: f64) -> String {
+    if value.abs() < 0.005 {
+        String::new()
+    } else {
+        format!("{value:.2}")
     }
 }
 
