@@ -1,6 +1,7 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use leptos::*;
+use leptos::prelude::event_target_value;
+use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
 use web_sys::window;
@@ -64,9 +65,9 @@ pub fn App() -> impl IntoView {
         .map(|max_id| max_id + 1)
         .unwrap_or(1);
 
-    let (ingredients, set_ingredients) = create_signal(initial_ingredients);
-    let next_id = create_rw_signal(initial_next_id);
-    let (recipe_name, set_recipe_name) = create_signal(initial_name);
+    let (ingredients, set_ingredients) = signal(initial_ingredients);
+    let next_id = RwSignal::new(initial_next_id);
+    let (recipe_name, set_recipe_name) = signal(initial_name);
 
     let add_ingredient = {
         move |_| {
@@ -95,10 +96,10 @@ pub fn App() -> impl IntoView {
         }
     };
 
-    create_effect({
+    Effect::new({
         let ingredients = ingredients;
         let recipe_name = recipe_name;
-        move |_| {
+        move || {
             let current = ingredients.get();
             let name = recipe_name.get();
             if let Some(encoded) = encode_recipe(&current, &name) {
@@ -126,7 +127,7 @@ pub fn App() -> impl IntoView {
         }
     });
 
-    let totals = create_memo(move |_| {
+    let totals = Memo::new(move |_| {
         ingredients.with(|items| {
             let mut total_protein = 0.0;
             let mut total_fat = 0.0;
@@ -254,7 +255,7 @@ pub fn App() -> impl IntoView {
                                             })
                                         }
                                         on:input=move |ev| {
-                                            let value = leptos::event_target_value(&ev);
+                                            let value = event_target_value(&ev);
                                             update_ingredient(set_ingredients, id, |item| item.name = value);
                                         }
                                     />
@@ -422,7 +423,7 @@ pub fn App() -> impl IntoView {
                             key=|ingredient: &Ingredient| ingredient.id
                             children=move |ingredient: Ingredient| {
                                 let id = ingredient.id;
-                                let row_data = create_memo({
+                                let row_data = Memo::new({
                                     let ingredients = ingredients;
                                     move |_| {
                                         ingredients.with(|items| {
@@ -522,8 +523,8 @@ pub fn App() -> impl IntoView {
 
 fn macro_input<V, F>(label: &'static str, value: V, on_change: F) -> impl IntoView
 where
-    V: Fn() -> String + 'static,
-    F: Fn(String) + 'static,
+    V: Fn() -> String + Send + 'static,
+    F: Fn(String) + Send + 'static,
 {
     view! {
         <label class="card__field">
@@ -534,7 +535,7 @@ where
                 inputmode="decimal"
                 prop:value=value
                 on:input=move |ev| {
-                    let new_value = leptos::event_target_value(&ev);
+                    let new_value = event_target_value(&ev);
                     on_change(new_value);
                 }
             />

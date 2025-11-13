@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-leptos = { version = "0.6", features = ["csr"] }
-console_error_panic_hook = "0.1"
-web-sys = { version = "0.3", features = ["Window"] }
-base64 = { version = "0.21", default-features = false, features = ["alloc"] }
+leptos = { version = "0.8", features = ["csr"] }
+console_error_panic_hook = "0.1.7"
+web-sys = { version = "0.3.72", features = ["Window", "History", "Location", "Storage", "HtmlSelectElement"] }
+base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+wasm-bindgen = "0.2"
