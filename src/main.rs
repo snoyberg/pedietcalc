@@ -39,6 +39,7 @@ struct RowSnapshot {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct RecipePayload {
+    name: Option<String>,
     ingredients: Vec<IngredientPayload>,
 }
 
@@ -54,7 +55,8 @@ struct IngredientPayload {
 
 #[component]
 pub fn App() -> impl IntoView {
-    let initial_ingredients = load_recipe_from_url().unwrap_or_else(|| vec![Ingredient::empty(0)]);
+    let (initial_ingredients, initial_name) =
+        load_recipe_from_url().unwrap_or_else(|| (vec![Ingredient::empty(0)], String::new()));
     let initial_next_id = initial_ingredients
         .iter()
         .map(|ingredient| ingredient.id)
@@ -64,6 +66,7 @@ pub fn App() -> impl IntoView {
 
     let (ingredients, set_ingredients) = create_signal(initial_ingredients);
     let next_id = create_rw_signal(initial_next_id);
+    let (recipe_name, set_recipe_name) = create_signal(initial_name);
 
     let add_ingredient = {
         move |_| {
@@ -94,9 +97,11 @@ pub fn App() -> impl IntoView {
 
     create_effect({
         let ingredients = ingredients;
+        let recipe_name = recipe_name;
         move |_| {
             let current = ingredients.get();
-            if let Some(encoded) = encode_recipe(&current) {
+            let name = recipe_name.get();
+            if let Some(encoded) = encode_recipe(&current, &name) {
                 let target_hash = format!("#recipe={encoded}");
                 if let Some(win) = window() {
                     let location = win.location();
@@ -164,6 +169,18 @@ pub fn App() -> impl IntoView {
                     </a>
                     "."
                 </p>
+                <label class="recipe-name-field">
+                    <span>"Recipe name (optional)"</span>
+                    <input
+                        class="recipe-name-input"
+                        type="text"
+                        placeholder="e.g. High-protein chili"
+                        prop:value=move || recipe_name.get()
+                        on:input=move |ev| {
+                            set_recipe_name.set(event_target_value(&ev));
+                        }
+                    />
+                </label>
                 </section>
 
                 <section class="app__actions screen-only">
@@ -379,7 +396,16 @@ pub fn App() -> impl IntoView {
             </section>
 
             <section class="print-report print-only">
-                <h1>Recipe breakdown</h1>
+                <h1>
+                    {move || {
+                        let name = recipe_name.get();
+                        if name.trim().is_empty() {
+                            "Recipe breakdown".to_string()
+                        } else {
+                            name
+                        }
+                    }}
+                </h1>
                 <table>
                     <thead>
                         <tr>
@@ -557,8 +583,14 @@ fn format_ratio(totals: (f64, f64, f64)) -> String {
     }
 }
 
-fn encode_recipe(ingredients: &[Ingredient]) -> Option<String> {
+fn encode_recipe(ingredients: &[Ingredient], name: &str) -> Option<String> {
+    let trimmed_name = name.trim();
     let payload = RecipePayload {
+        name: if trimmed_name.is_empty() {
+            None
+        } else {
+            Some(trimmed_name.to_string())
+        },
         ingredients: ingredients
             .iter()
             .map(|ingredient| IngredientPayload {
@@ -577,29 +609,28 @@ fn encode_recipe(ingredients: &[Ingredient]) -> Option<String> {
         .map(|bytes| URL_SAFE_NO_PAD.encode(bytes))
 }
 
-fn decode_recipe(encoded: &str) -> Option<Vec<Ingredient>> {
+fn decode_recipe(encoded: &str) -> Option<RecipePayload> {
     let raw = URL_SAFE_NO_PAD.decode(encoded.as_bytes()).ok()?;
-    let payload: RecipePayload = serde_json::from_slice(&raw).ok()?;
-    Some(
-        payload
-            .ingredients
-            .into_iter()
-            .map(Ingredient::from)
-            .collect::<Vec<_>>(),
-    )
+    serde_json::from_slice(&raw).ok()
 }
 
-fn load_recipe_from_url() -> Option<Vec<Ingredient>> {
+fn load_recipe_from_url() -> Option<(Vec<Ingredient>, String)> {
     let window = window()?;
     let location = window.location();
     let hash = location.hash().ok()?;
     let trimmed = hash.strip_prefix('#').unwrap_or(&hash);
     let encoded = trimmed.strip_prefix("recipe=")?;
-    let mut ingredients = decode_recipe(encoded)?;
+    let payload = decode_recipe(encoded)?;
+    let mut ingredients = payload
+        .ingredients
+        .into_iter()
+        .map(Ingredient::from)
+        .collect::<Vec<_>>();
     if ingredients.is_empty() {
         ingredients.push(Ingredient::empty(0));
     }
-    Some(ingredients)
+    let name = payload.name.unwrap_or_default();
+    Some((ingredients, name))
 }
 
 impl From<IngredientPayload> for Ingredient {
